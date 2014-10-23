@@ -23,25 +23,14 @@
 #include <math.h>
 
 #if !defined(__APPLE__)
-#include <malloc.h>
+	#include <malloc.h>
 #endif
 
 #define VERSION "1.0.1"
 
-void fclose_if(FILE **resource) {
-	if (*resource) {
-		fclose(*resource);
-	}
-}
-
-void free_if(char **resource) {
-	if (*resource) {
-		free(*resource);
-	}
-}
-
 int main(int argc, char *argv[]) {
-	int rc = 0, i = 0, l = 0, offset = 0, byte = 0, in_filesize = 0, out_filesize = 0;
+	int rc = 0, i = 0, l = 0, offset = 0, byte = 0;
+	size_t in_filesize = 0, out_filesize = 0;
 	char *in_filename = NULL, *out_filename = NULL, *in_data = NULL, *out_data = NULL;
 	FILE *in = NULL, *out = NULL;
 
@@ -69,13 +58,13 @@ int main(int argc, char *argv[]) {
 		goto cleanup;
 	}
 
-	fseek(in, 0, SEEK_END);
-	in_filesize = ftell(in);
-	fseek(in, 0, SEEK_SET);
+	(void)fseek(in, 0, SEEK_END);
+	in_filesize = (size_t)ftell(in);
+	(void)fseek(in, 0, SEEK_SET);
 
-	in_data = malloc(sizeof(char) * in_filesize);
+	in_data = malloc(sizeof(char) * in_filesize + 1);
 
-	if (fread(in_data, 1, in_filesize, in) != in_filesize) {
+	if (fread(in_data, 1, in_filesize, in) != (size_t)in_filesize) {
 		printf("Unable to read file: %s\n", in_filename);
 		rc = 1;
 		goto cleanup;
@@ -87,9 +76,9 @@ int main(int argc, char *argv[]) {
 		goto cleanup;
 	}
 
-	for (i = 0; i < in_filesize; i++) {
+	for (i = 0, l = (int)in_filesize; i < l; i++) {
 		if (in_data[i] == '8' && in_data[i + 1] == 'B' && in_data[i + 2] == 'I' && in_data[i + 3] == 'M') {
-			if ((in_data[i + 4] == 4 && in_data[i + 5] == 9) || (in_data[i + 4] == 4 && in_data[i + 5] == 12)) {
+			if ((in_data[i + 4] == (char)4 && in_data[i + 5] == (char)9) || (in_data[i + 4] == (char)4 && in_data[i + 5] == (char)12)) {
 				offset = i + 6 + 2;
 				break;
 			}
@@ -97,32 +86,43 @@ int main(int argc, char *argv[]) {
 	}
 
 	for (i = 0, l = 3; i <= 4; i++) {
-		byte = in_data[offset++];
+		byte = (int)in_data[offset++];
 		byte += byte < 0 ? 256 : 0;
 
-		out_filesize += byte * pow(256, l - i);
+		out_filesize += byte * pow(256, (double)(l - i));
 	}
 
 	offset += 27;
 	out_filesize -= 28;
 
-	out_data = malloc(sizeof(char) * out_filesize);
+	out_data = malloc(sizeof(char) * out_filesize + 1);
 
-	for (i = 0; i < out_filesize; i++) {
+	for (i = 0, l = (int)out_filesize; i < l; i++) {
 		out_data[i] = in_data[offset++];
 	}
 
-	if (fwrite(out_data, 1, out_filesize, out) != out_filesize) {
+	if (fwrite(out_data, 1, out_filesize, out) != (size_t)out_filesize) {
 		printf("Error writing %s\n", out_filename);
 		rc = 1;
 		goto cleanup;
 	}
 
 cleanup:
-	fclose_if(&in);
-	fclose_if(&out);
-	free_if(&in_data);
-	free_if(&out_data);
+	if (in) {
+		(void)fclose(in);
+	}
+
+	if (out) {
+		(void)fclose(out);
+	}
+
+	if (in_data) {
+		free(in_data);
+	}
+
+	if (out_data) {
+		free(out_data);
+	}
 
 	return rc;
 }

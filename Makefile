@@ -1,22 +1,22 @@
-NAME   := psdthumb
-HASH   := md5sum
-BINDIR := /usr/local/bin
+NAME    := psdthumb
+HASH    := md5sum
+BIN_DIR := /usr/local/bin
 
-all: $(NAME)
+all: build
 
-$(NAME): $(NAME).c
-	gcc -o $@ $< -lm
+build: $(NAME).c
+	gcc -Wall -Wextra -o $(NAME) $< -lm
 
-test: $(NAME)
+test: build
 	./$(NAME) in.psd out.jpg
 	$(HASH) out.jpg cmp.jpg
 
 memcheck:
 	gcc -o $(NAME) $(NAME).c -lm -O0 -g
-	valgrind ./$(NAME)
+	valgrind ./$(NAME) in.psd out.jpg
 
-install: $(NAME)
-	install -m 0755 $< $(BINDIR)
+install:
+	install -m 0755 $(NAME) $(BIN_DIR)
 
 uninstall:
 	rm -f $(BINDIR)/$(NAME)
